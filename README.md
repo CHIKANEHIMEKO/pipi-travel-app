@@ -32,13 +32,14 @@ npm run reset-project
 This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
 
 ## Project Structure
+```text
 ├── app/               # Expo Router logic (Main application screens)
 ├── assets/            # Images, splash screen, and app icons
 ├── components/        # UI components (ItineraryRow, RouteConnector, etc.)
 ├── .env               # Environment variables (Protected by .gitignore)
 ├── .gitignore         # Git ignore rules for security
 └── README.md          # Project documentation
-
+```
 
 ## Learn more
 
