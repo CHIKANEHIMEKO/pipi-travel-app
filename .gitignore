@@ -30,8 +30,12 @@ yarn-error.*
 .DS_Store
 *.pem
 
-# local env files
-.env*.local
+# 🔐 Environment variables (非常重要：確保私密網址不外洩)
+.env
+.env.local
+.env.development
+.env.production
+.env.*.local
 
 # typescript
 *.tsbuildinfo
