@@ -54,3 +54,24 @@ Join our community of developers creating universal apps.
 
 - [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
 - [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+
+
+## Git cmd
+
+```bash
+git init
+git status
+git add .
+git commit -m ""
+git push -u origin main
+```
+
+## Push to firebase hosting
+```bash
+npx expo export -p web
+firebase init hosting
+firebase deploy
+```
+What do you want to use as your public directory? --> dist
+Configure as a single-page app (rewrite all urls to /index.html) --> y
+Set up automatic builds and deploys with GitHub? --> n

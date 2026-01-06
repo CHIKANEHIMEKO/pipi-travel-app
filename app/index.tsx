@@ -1,41 +1,41 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
 import {
-    Camera,
-    Check,
-    Clock,
-    Edit3,
-    ExternalLink,
-    Heart,
-    Info,
-    Lock,
-    MapPin,
-    Navigation,
-    Plane,
-    Plus,
-    Store,
-    Trash2,
-    Utensils,
-    X,
+  Camera,
+  Check,
+  Clock,
+  Edit3,
+  ExternalLink,
+  Heart,
+  Info,
+  Lock,
+  MapPin,
+  Navigation,
+  Plane,
+  Plus,
+  Store,
+  Trash2,
+  Utensils,
+  X,
 } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Dimensions,
-    FlatList,
-    KeyboardAvoidingView,
-    Linking,
-    Modal,
-    Platform,
-    Pressable,
-    RefreshControl,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  FlatList,
+  KeyboardAvoidingView,
+  Linking,
+  Modal,
+  Platform,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { GestureHandlerRootView, Swipeable } from 'react-native-gesture-handler';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
@@ -68,6 +68,26 @@ const { width } = Dimensions.get('window');
 // ✅ 產生穩定的 unique id（避免 new- 前綴造成誤判）
 const genId = () => `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
+// ✅ 新增：標準化時間格式 (確保 9:00 變成 09:00，並處理 ISO 字串)
+const normalizeTime = (timeStr: string) => {
+  if (!timeStr) return "12:00";
+  
+  let target = timeStr;
+  // 如果是 ISO 格式 (1899-12-30T09:00:00.000Z)，取 T 後面的時間
+  if (timeStr.includes('T')) {
+    target = timeStr.split('T')[1].substring(0, 5);
+  }
+  
+  // 確保是 HH:mm 格式並補零 (處理 9:00 -> 09:00)
+  const parts = target.split(':');
+  if (parts.length >= 2) {
+    const hh = parts[0].padStart(2, '0');
+    const mm = parts[1].substring(0, 2).padStart(2, '0');
+    return `${hh}:${mm}`;
+  }
+  return target;
+};
+
 // --- 工具函式 ---
 const renderTextWithLinks = (text: string) => {
   if (!text) return null;
@@ -85,11 +105,13 @@ const renderTextWithLinks = (text: string) => {
   });
 };
 
+// ✅ 修改：使用 normalizeTime 確保解析正確
 const parseTimeToDate = (timeStr: string) => {
-  const [hours, minutes] = (timeStr || '12:00').split(':').map(Number);
+  const normalized = normalizeTime(timeStr);
+  const [hours, minutes] = normalized.split(':').map(Number);
   const date = new Date();
-  date.setHours(hours);
-  date.setMinutes(minutes);
+  date.setHours(hours || 0);
+  date.setMinutes(minutes || 0);
   return date;
 };
 
@@ -99,8 +121,11 @@ const formatDateToString = (date: Date) => {
   return `${hours}:${minutes}`;
 };
 
+// ✅ 修改：排序時先標準化，解決 17:00 排在 9:00 前的問題
 const sortByTime = (items: ItineraryItem[]) => {
-  return [...items].sort((a, b) => a.time.localeCompare(b.time));
+  return [...items].sort((a, b) => 
+    normalizeTime(a.time).localeCompare(normalizeTime(b.time))
+  );
 };
 
 const getTypeConfig = (type: string) => {
@@ -304,7 +329,7 @@ const ItineraryItemRow = ({ item, onEdit, onDelete, isFirst, isLast, isEditMode 
       >
         <View style={styles.timeCol}>
           <View style={[styles.miniLine, isFirst && { opacity: 0 }]} />
-          <Text style={styles.timeLabel}>{item.time}</Text>
+          <Text style={styles.timeLabel}>{normalizeTime(item.time)}</Text>
           <View style={styles.dotContainer}>
             <View style={styles.dotOutline}>
               <View style={styles.dotInner} />
@@ -363,14 +388,28 @@ export default function App() {
   const fetchFromSheets = async (isManualRefresh = false) => {
     try {
       if (!isManualRefresh) setIsLoading(true);
-      const response = await fetch(API_URL);
+
+      // 1. 在網址後方加上時間戳記，防止網頁版抓到舊的快取資料
+      const response = await fetch(`${API_URL}?t=${Date.now()}`);
+      
       if (!response.ok) throw new Error(`Error: ${response.status}`);
+      
       const data = await response.json();
+
       if (Array.isArray(data)) {
-        setItinerary(data.map((d) => ({ ...d, day: parseInt((d as any).day, 10) || 1 })));
+        // 2. 處理資料：確保天數是數字，並幫每一天的行程「按時間排序」
+        const processedData = data.map((d) => ({
+          ...d,
+          day: parseInt((d as any).day, 10) || 1,
+          items: sortByTime(d.items || []) // 這裡會調用我們剛才優化的 sortByTime
+        }));
+
+        // 3. 最後對「整份行程」按天數 (Day 1, Day 2...) 進行排序後存入狀態
+        setItinerary(processedData.sort((a, b) => a.day - b.day));
       }
     } catch (error: any) {
-      console.error(error);
+      console.error("抓取雲端資料失敗:", error);
+      // 出錯時可以選擇不排空，或者給一個空陣列避免崩潰
       setItinerary([]);
     } finally {
       setIsLoading(false);
@@ -407,11 +446,16 @@ export default function App() {
 
   const currentDayData = itinerary.find((d) => d.day === activeDay);
 
+// ✅ 核心修正：在展開 items 之前加入 sortByTime 排序
   const combinedData: ItineraryItem[] = currentDayData
     ? ([
         { id: 'sticky-tabs', itemType: 'TABS', isDummy: true } as any,
         { id: 'scroll-summary', itemType: 'SUMMARY', isDummy: true } as any,
-        ...((currentDayData.items || []).map((i) => ({ ...i, itemType: 'REAL_ITEM' })) as any),
+        // 這裡加入了 sortByTime 確保顯示順序絕對正確
+        ...sortByTime(currentDayData.items || []).map((i) => ({ 
+          ...i, 
+          itemType: 'REAL_ITEM' 
+        })),
       ] as any)
     : ([{ id: 'sticky-tabs', itemType: 'TABS', isDummy: true } as any] as any);
 
@@ -482,6 +526,7 @@ export default function App() {
           <StatusBar barStyle="dark-content" />
 
           <FlatList
+            key={`list-day-${activeDay}`}
             data={combinedData}
             keyExtractor={(item) => item.id}
             stickyHeaderIndices={[1]}
