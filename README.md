@@ -1,7 +1,7 @@
 ## 🍤 PIPI Travel App
 
 This is my own travelling app 
-use google sheets as database
+using google sheets as database
 
 ## Get started
 
