@@ -69,7 +69,7 @@ git push -u origin main
 ## Push to firebase hosting
 ```bash
 npx expo export -p web
-firebase init hosting
+firebase init hosting #first time
 firebase deploy
 ```
 What do you want to use as your public directory? --> dist
